@@ -1,0 +1,25 @@
+{
+  "name": "satmaelstorm/large-array-writer",
+  "description": "Large Array Writer (sample: sitemap writer)",
+  "authors": [
+    {
+      "name": "Vladislav Sidorin",
+      "email": "satmaelstorm@gmail.com"
+    }
+  ],
+  "keywords": [
+    "sitemap", "large array", "huge array", "file writer", "file"
+  ],
+  "license": "MIT",
+  "require": {
+    "php": ">=7.1.0"
+  },
+  "autoload": {
+    "psr-4": {
+      "satmaelstorm\\LargeArrayWriter\\": "src/"
+    }
+  },
+  "require-dev": {
+    "phpunit/phpunit": "5.1.*"
+  }
+}
