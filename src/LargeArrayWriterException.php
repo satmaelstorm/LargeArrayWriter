@@ -13,4 +13,5 @@ class LargeArrayWriterException extends \Exception
 {
     const ERROR_STRING_TO_LONG = 1;
     const ERROR_CANT_OPEN_FILE = 2;
+    const ERROR_CANT_CREATE_DIRECTORY = 3;
 }

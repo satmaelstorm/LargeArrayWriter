@@ -64,7 +64,7 @@ class LargeArrayWriter implements \Countable
         $this->path = $path;
         $b = $this->ensureDirectory($this->path);
         if (!$b){
-            throw new \Exception("Can't create directory {$this->path}");
+            throw new LargeArrayWriterException("Can't create directory {$this->path}", LargeArrayWriterException::ERROR_CANT_CREATE_DIRECTORY);
         }
         $this->nameTemplate = $nameTemplate;
         $this->fileHeader = $header;
