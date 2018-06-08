@@ -16,7 +16,9 @@
   },
   "autoload": {
     "psr-4": {
-      "satmaelstorm\\LargeArrayWriter\\": "src/"
+      "satmaelstorm\\LargeArrayWriter\\": "src/",
+      "satmaelstorm\\LargeArrayWriter\\NameIterator\\": "src/NameIterator",
+      "satmaelstorm\\LargeArrayWriter\\Saver\\": "src/Saver"
     }
   },
   "require-dev": {

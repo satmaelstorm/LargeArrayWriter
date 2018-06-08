@@ -8,24 +8,22 @@
 
 namespace satmaelstorm\LargeArrayWriter;
 
+use satmaelstorm\LargeArrayWriter\NameIterator\INameIterator;
+use satmaelstorm\LargeArrayWriter\Saver\ISaver;
+
 
 /**
- * Class LargeArrayWriter
- * @deprecated use LAWriter instead
+ * Class LAWriter (LargeArrayWriter 2.0)
  * @package satmaelstorm\LargeArrayWriter
  */
-class LargeArrayWriter implements \Countable
+class LAWriter implements \Countable
 {
-    private $path = "/tmp";
-    private $nameTemplate = "file_%NUM%.txt";
     private $fileHeader = "";
     private $fileFooter = "";
     private $maxStrings = 50000;
     private $maxLength = 50 * 1024 * 1024; //50 Mb
     private $chunkSize = 1000;
     private $gzip = true;
-
-    private $directoryDelimiter = "/";
 
     private $currentNum = 0;
     private $writtenFiles = [];
@@ -39,48 +37,42 @@ class LargeArrayWriter implements \Countable
     private $footerSize = 0;
 
     private $countTotal = 0;
+    /** @var INameIterator  */
+    private $nameIterator;
+    /** @var ISaver  */
+    private $saver;
 
 
     /**
-     * LargeArrayWriter constructor.
-     * @param string $nameTemplate
-     * @param string $path
-     * @param bool $gzip
-     * @param string $header
-     * @param string $footer
-     * @param int $maxStrings
-     * @param int $maxLength
-     * @param int $chunkSize
-     * @param string $directoryDelimiter
-     * @throws \Exception
+     * LAWriter constructor.
+     *
+     * @param \satmaelstorm\LargeArrayWriter\NameIterator\INameIterator $nameIterator
+     * @param \satmaelstorm\LargeArrayWriter\Saver\ISaver               $saver
+     * @param string                                                    $header
+     * @param string                                                    $footer
+     * @param int                                                       $maxStrings
+     * @param int                                                       $maxLength
+     * @param int                                                       $chunkSize
      */
     public function __construct(
-        string $nameTemplate = "file_%NUM%.txt",
-        string $path = "/tmp",
-        bool $gzip = true,
+        INameIterator $nameIterator,
+        ISaver $saver,
         string $header = "",
         string $footer = "",
-        int $maxStrings = 50000, //50K strings - for sitemaps
-        int $maxLength = 50 * 1024 * 1024, //50 Mb - for sitemaps
-        int $chunkSize = 1000,
-        string $directoryDelimiter = "/"
+        int $maxStrings = -1,
+        int $maxLength = -1,
+        int $chunkSize = 1000
     )
     {
-        $this->path = $path;
-        $b = $this->ensureDirectory($this->path);
-        if (!$b){
-            throw new LargeArrayWriterException("Can't create directory {$this->path}", LargeArrayWriterException::ERROR_CANT_CREATE_DIRECTORY);
-        }
-        $this->nameTemplate = $nameTemplate;
+        $this->nameIterator = $nameIterator;
+        $this->saver = $saver;
         $this->fileHeader = $header;
         $this->fileFooter = $footer;
         $this->maxStrings = $maxStrings;
         $this->maxLength = $maxLength;
         $this->chunkSize = $chunkSize;
-        $this->directoryDelimiter = $directoryDelimiter;
-        $this->gzip = $gzip;
-        $this->headerSize = strlen($this->fileHeader); //нужно в байтах
-        $this->footerSize = strlen($this->fileFooter); //нужно в байтах
+        $this->headerSize = strlen($this->fileHeader);
+        $this->footerSize = strlen($this->fileFooter);
     }
 
 
@@ -133,20 +125,20 @@ class LargeArrayWriter implements \Countable
             if (is_null($this->currentFile)) {
                 $this->createNewFile();
             }
-            if ($this->currentFileSizeStrings >= $this->maxStrings) {
+            if ($this->currentFileSizeStrings > 0 && $this->currentFileSizeStrings >= $this->maxStrings) {
                 $this->finalizeFile();
                 continue;
             }
             $str = $this->strings[$idx];
             $nextLen = strlen($str) + $this->footerSize; //in bytes
-            if (($this->headerSize + $nextLen) >= $this->maxLength) {
+            if ($this->currentFileSizeMb > 0 && ($this->headerSize + $nextLen) >= $this->maxLength) {
                 throw new LargeArrayWriterException("Result string too long (length with footer $nextLen bytes) : $str", LargeArrayWriterException::ERROR_STRING_TO_LONG);
             }
-            if (($this->currentFileSizeMb + $nextLen) >= $this->maxLength) {
+            if ($this->currentFileSizeMb > 0 && ($this->currentFileSizeMb + $nextLen) >= $this->maxLength) {
                 $this->finalizeFile();
                 continue;
             }
-            $this->filePuts($this->currentFile, $str);
+            $this->saver->puts($str);
             $this->currentFileSizeMb += strlen($str); //in bytes
             ++$this->currentFileSizeStrings;
             ++$idx;
@@ -161,121 +153,25 @@ class LargeArrayWriter implements \Countable
      */
     protected function createNewFile()
     {
-        $fileName = str_replace('%NUM%', $this->currentNum, $this->nameTemplate);
-        if ($this->gzip) {
-            $fileName .= ".gz";
-        }
+        $fileName = $this->nameIterator->next();
         $this->writtenFiles[] = $fileName;
-        $fullName = $this->path . $this->directoryDelimiter . $fileName;
-        $this->currentFile = $this->fileOpen($fullName);
+        $this->currentFile = $this->saver->open($fileName);
         if (empty($this->currentFile)) {
-            throw new LargeArrayWriterException("Can't open file $fullName for write!", LargeArrayWriterException::ERROR_CANT_OPEN_FILE);
+            throw new LargeArrayWriterException("Can't open file $fileName for write!", LargeArrayWriterException::ERROR_CANT_OPEN_FILE);
         }
-        $this->filePuts($this->currentFile, $this->fileHeader);
+        $this->saver->puts($this->fileHeader);
         $this->currentFileSizeMb = $this->headerSize; //in bytes
     }
 
     protected function finalizeFile()
     {
-        $this->filePuts($this->currentFile, $this->fileFooter);
-        $this->fileClose($this->currentFile);
+        $this->saver->puts($this->fileFooter);
+        $this->saver->close();
         ++$this->currentNum;
         $this->currentFileSizeMb = $this->currentFileSizeStrings = 0;
         $this->currentFile = null;
     }
 
-    protected function fileOpen(string $fullName)
-    {
-        if ($this->gzip) {
-            return gzopen($fullName, "w");
-        } else {
-            return fopen($fullName, "w");
-        }
-    }
-
-    protected function filePuts($file, string $string)
-    {
-        if ($this->gzip) {
-            gzwrite($file, $string);
-        } else {
-            fwrite($file, $string);
-        }
-    }
-
-    protected function fileClose($file)
-    {
-        if ($this->gzip) {
-            gzclose($file);
-        } else {
-            fclose($file);
-        }
-    }
-
-
-    /**
-     * @param string $dir
-     * @return bool
-     */
-    protected function ensureDirectory(string $dir) : bool
-    {
-        $names = explode($this->directoryDelimiter, $dir);
-        $path = '';
-        foreach ($names as $part) {
-            if (strlen($part) == 0) {
-                continue;
-            }
-
-            $path .= $this->directoryDelimiter . $part;
-            if (is_dir($path)) {
-                continue;
-            }
-
-            $umask = umask(0);
-            $success = mkdir($path, 0777, true);
-            umask($umask);
-            if (!$success) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-
-    /**
-     * @return string
-     */
-    public function getPath() : string
-    {
-        return $this->path;
-    }
-
-    /**
-     * @param string $path
-     * @return LargeArrayWriter
-     */
-    public function setPath(string $path) : self
-    {
-        $this->path = $path;
-        return $this;
-    }
-
-    /**
-     * @return string
-     */
-    public function getNameTemplate() : string
-    {
-        return $this->nameTemplate;
-    }
-
-    /**
-     * @param string $nameTemplate
-     * @return LargeArrayWriter
-     */
-    public function setNameTemplate(string $nameTemplate) : self
-    {
-        $this->nameTemplate = $nameTemplate;
-        return $this;
-    }
 
     /**
      * @return string
@@ -287,7 +183,7 @@ class LargeArrayWriter implements \Countable
 
     /**
      * @param string $fileHeader
-     * @return LargeArrayWriter
+     * @return LAWriter
      */
     public function setFileHeader(string $fileHeader) : self
     {
@@ -305,7 +201,7 @@ class LargeArrayWriter implements \Countable
 
     /**
      * @param string $fileFooter
-     * @return LargeArrayWriter
+     * @return LAWriter
      */
     public function setFileFooter($fileFooter) : self
     {
@@ -323,7 +219,7 @@ class LargeArrayWriter implements \Countable
 
     /**
      * @param int $maxStrings
-     * @return LargeArrayWriter
+     * @return LAWriter
      */
     public function setMaxStrings(int $maxStrings) : self
     {
@@ -341,7 +237,7 @@ class LargeArrayWriter implements \Countable
 
     /**
      * @param int $maxLength
-     * @return LargeArrayWriter
+     * @return LAWriter
      */
     public function setMaxLength(int $maxLength) : self
     {
@@ -359,7 +255,7 @@ class LargeArrayWriter implements \Countable
 
     /**
      * @param int $chunkSize
-     * @return LargeArrayWriter
+     * @return LAWriter
      */
     public function setChunkSize(int $chunkSize) : self
     {
