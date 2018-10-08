@@ -2,7 +2,8 @@
 
 It was originally created for recording SiteMap files with their limitations of 50 MB and 50,000 lines per 1 file. Later useful for recording all sorts of feeds.
 
-## Usage
+## Simple Version (1.0)
+### Usage
 
 ```php
 $writer = new LargeArrayWriter(
@@ -24,3 +25,9 @@ After all, finalize writer:
 ```php
 $files = $writer->finalize();
 ```
+
+## Extended Version (2.0)
+
+### FileNumerator
+### Saver
+### LAWriter
