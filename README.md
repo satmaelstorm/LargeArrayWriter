@@ -1,6 +1,6 @@
 # LargeArrayWriter
 
-It was originally created for recording CiteMan files with their limitations of 50 MB and 50,000 lines per 1 file. Later useful for recording all sorts of feeds.
+It was originally created for recording SiteMap files with their limitations of 50 MB and 50,000 lines per 1 file. Later useful for recording all sorts of feeds.
 
 ## Usage
 

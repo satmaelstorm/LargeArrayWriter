@@ -23,7 +23,6 @@ class LAWriter implements \Countable
     private $maxStrings = 50000;
     private $maxLength = 50 * 1024 * 1024; //50 Mb
     private $chunkSize = 1000;
-    private $gzip = true;
 
     private $currentNum = 0;
     private $writtenFiles = [];
@@ -125,18 +124,21 @@ class LAWriter implements \Countable
             if (is_null($this->currentFile)) {
                 $this->createNewFile();
             }
-            if ($this->currentFileSizeStrings > 0 && $this->currentFileSizeStrings >= $this->maxStrings) {
+            if ($this->maxStrings > 0 && $this->currentFileSizeStrings > 0 && $this->currentFileSizeStrings >= $this->maxStrings) {
                 $this->finalizeFile();
                 continue;
             }
             $str = $this->strings[$idx];
             $nextLen = strlen($str) + $this->footerSize; //in bytes
-            if ($this->currentFileSizeMb > 0 && ($this->headerSize + $nextLen) >= $this->maxLength) {
-                throw new LargeArrayWriterException("Result string too long (length with footer $nextLen bytes) : $str", LargeArrayWriterException::ERROR_STRING_TO_LONG);
-            }
-            if ($this->currentFileSizeMb > 0 && ($this->currentFileSizeMb + $nextLen) >= $this->maxLength) {
-                $this->finalizeFile();
-                continue;
+            if ($this->maxLength > 0) {
+                if ($this->currentFileSizeMb > 0 && ($this->headerSize + $nextLen) >= $this->maxLength) {
+                    throw new LargeArrayWriterException("Result string too long (length with footer $nextLen bytes) : $str",
+                        LargeArrayWriterException::ERROR_STRING_TO_LONG);
+                }
+                if ($this->currentFileSizeMb > 0 && ($this->currentFileSizeMb + $nextLen) >= $this->maxLength) {
+                    $this->finalizeFile();
+                    continue;
+                }
             }
             $this->saver->puts($str);
             $this->currentFileSizeMb += strlen($str); //in bytes

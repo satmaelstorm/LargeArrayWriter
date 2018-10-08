@@ -10,7 +10,7 @@ namespace satmaelstorm\LargeArrayWriter;
 
 
 /**
- * Class LargeArrayWriter
+ * Class LargeArrayWriter (version 1.0 bc)
  * @deprecated use LAWriter instead
  * @package satmaelstorm\LargeArrayWriter
  */
