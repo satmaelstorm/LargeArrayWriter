@@ -19,7 +19,7 @@ true,
 ```
 Add string to file:
 ```php
-$writer->addString(<url><loc>URL</loc><lastmod>DATE</lastmod><changefreq>daily</changefreq></url>\n);
+$writer->addString("<url><loc>URL</loc><lastmod>DATE</lastmod><changefreq>daily</changefreq></url>\n");
 ```
 After all, finalize writer:
 ```php
